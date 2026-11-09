@@ -2187,48 +2187,63 @@ function ajustarObjetosAutomaticosDaPlaca(canvas, width, height, tipo) {
   const vertical = tipo === 'vertical';
 
   canvas.getObjects().forEach(obj => {
-    if (obj.miroRole !== 'product-title' && obj.miroRole !== 'price') return;
+    if (vertical) {
+      // Recupera também placas antigas, cujos objetos ainda não tinham miroRole.
+      const texto = String(obj.text || '').trim();
+      let role = obj.miroRole || '';
+      if (!role && texto === 'SUPERMERCADO MIRO') role = 'brand';
+      if (!role && texto === 'R$') role = 'currency';
+      if (!role && texto === 'Oferta válida enquanto durarem os estoques') role = 'validity';
+      if (!role && texto === '(47) 3521-3354') role = 'phone';
+      if (!role && Math.abs((obj.top || 0) / height - 0.58) < 0.035 && (obj.left || 0) > width * 0.65) role = 'unit';
 
-    if (obj.miroRole === 'product-title') {
-      if (vertical) {
-        const tituloWidth  = width  * 0.84;
+      if (role === 'brand') {
+        obj.set({ left: width * 0.08, top: height * 0.06, width: width * 0.84,
+          originX: 'left', originY: 'top', scaleX: 1, scaleY: 1, textAlign: 'center' });
+      } else if (role === 'product-title') {
         const tituloHeight = height * 0.36;
-        obj.set({
-          originX: 'center', originY: 'top',
-          left: width * 0.50, top: height * 0.12,
-          width: tituloWidth, height: tituloHeight,
-          scaleX: 1, scaleY: 1,
-          textAlign: 'center',
-          miroFitMaxHeight: tituloHeight, miroFitMinFontSize: 10
-        });
+        obj.set({ originX: 'center', originY: 'top', left: width / 2, top: height * 0.12,
+          width: width * 0.84, height: tituloHeight, scaleX: 1, scaleY: 1,
+          textAlign: 'center', miroFitMaxHeight: tituloHeight, miroFitMinFontSize: 10 });
+      } else if (role === 'currency') {
+        obj.set({ left: width * 0.08, top: height * 0.58, width: width * 0.18,
+          originX: 'left', originY: 'top', scaleX: 1, scaleY: 1, textAlign: 'left' });
+      } else if (role === 'unit') {
+        obj.set({ left: width * 0.74, top: height * 0.58, width: width * 0.18,
+          originX: 'left', originY: 'top', scaleX: 1, scaleY: 1, textAlign: 'right' });
+      } else if (role === 'price') {
+        const precoHeight = height * 0.24;
+        obj.set({ originX: 'center', originY: 'top', left: width / 2, top: height * 0.64,
+          width: width * 0.84, height: precoHeight, scaleX: 1, scaleY: 1,
+          miroFitMaxHeight: precoHeight, miroFitMinFontSize: 8 });
+      } else if (role === 'validity') {
+        obj.set({ left: width * 0.08, top: height * 0.88, width: width * 0.84,
+          originX: 'left', originY: 'top', scaleX: 1, scaleY: 1, textAlign: 'center' });
+      } else if (role === 'phone') {
+        obj.set({ left: width * 0.08, top: height * 0.93, width: width * 0.84,
+          originX: 'left', originY: 'top', scaleX: 1, scaleY: 1, textAlign: 'center' });
       } else {
-        const tituloWidth  = width  * 0.80;
-        const tituloHeight = height * 0.46;
-        obj.set({
-          originX: 'left', originY: 'top',
-          left: width * 0.05, top: height * 0.18,
-          width: tituloWidth, height: tituloHeight,
-          scaleX: 1, scaleY: 1,
-          textAlign: 'left',
-          miroFitMaxHeight: tituloHeight, miroFitMinFontSize: 10
-        });
+        return;
       }
-    } else if (obj.miroRole === 'price') {
-      const precoWidth   = width  * (vertical ? 0.84 : 0.44);
-      const precoHeight  = height * (vertical ? 0.24 : 0.22);
-
-      obj.set({
-        originX: 'center', originY: 'top',
-        left: width * (vertical ? 0.50 : 0.52 + 0.44 / 2),
-        top: (vertical ? height * 0.64 : height * 0.74),
-        width: precoWidth, height: precoHeight,
-        scaleX: 1, scaleY: 1,
-        miroFitMaxHeight: precoHeight,
-        // ★ Mínimo caiu para 8 no vertical
-        miroFitMinFontSize: 8
-      });
+      obj.miroRole = role;
+      obj.setCoords();
+      return;
     }
 
+    if (obj.miroRole !== 'product-title' && obj.miroRole !== 'price') return;
+    if (obj.miroRole === 'product-title') {
+      const tituloWidth = width * 0.80;
+      const tituloHeight = height * 0.46;
+      obj.set({ originX: 'left', originY: 'top', left: width * 0.05, top: height * 0.18,
+        width: tituloWidth, height: tituloHeight, scaleX: 1, scaleY: 1,
+        textAlign: 'left', miroFitMaxHeight: tituloHeight, miroFitMinFontSize: 10 });
+    } else if (obj.miroRole === 'price') {
+      const precoWidth = width * 0.44;
+      const precoHeight = height * 0.22;
+      obj.set({ originX: 'center', originY: 'top', left: width * (0.52 + 0.44 / 2),
+        top: height * 0.74, width: precoWidth, height: precoHeight, scaleX: 1, scaleY: 1,
+        miroFitMaxHeight: precoHeight, miroFitMinFontSize: 8 });
+    }
     obj.setCoords();
   });
   canvas.requestRenderAll();
@@ -2325,9 +2340,9 @@ function criarTextosPlacaVertical(canvasFabric, width, height, nome, preco, unid
 
   // Marca
   adicionarTextoVisualPlaca(canvasFabric, 'SUPERMERCADO MIRO', {
-    left: width * .10, top: height * .06, width: width * .80,
+    left: width * .08, top: height * .06, width: width * .84,
     fontSize: 36, fill: '#00552f', textAlign: 'center', charSpacing: 200
-  }, width * .80, height * .06, 20, 36);
+  }, width * .84, height * .06, 20, 36);
 
   // Nome
   const nomeTexto = adicionarTextoVisualPlaca(canvasFabric, nome, {
@@ -2350,20 +2365,21 @@ function criarTextosPlacaVertical(canvasFabric, width, height, nome, preco, unid
 
   // ★ R$ e unidade: desceram para 58% (era 50.5%)
   adicionarTextoVisualPlaca(canvasFabric, 'R$', {
-    left: width * .06, top: height * .58, width: width * .18, height: height * .05,
+    left: width * .08, top: height * .58, width: width * .18, height: height * .05,
     fontSize: 62, fill: '#00552f', textAlign: 'left'
   }, width * .18, height * .05, 36, 62);
 
 adicionarTextoVisualPlaca(canvasFabric, String(unidade || '').toUpperCase(), {
-  left: width * .76, top: height * .58, width: width * .18, height: height * .05,
+  left: width * .74, top: height * .58, width: width * .18, height: height * .05,
   fontSize: 62, fill: '#00552f', textAlign: 'right'
 }, width * .18, height * .05, 32, 62);
 
   // ★ Valor: desceu para 64%, altura ajustada, charSpacing suavizado e mínimo 8px
   // ★ Valor: Ajustado para não estourar com números grandes
   const valor = adicionarTextoVisualPlaca(canvasFabric, preco, {
-    left: width * .08, top: height * .64, width: width * .84, height: height * .24,
-    fontSize: 240, fill: '#00552f', textAlign: 'center', lineHeight: .86
+    left: width * .50, top: height * .64, width: width * .84, height: height * .24,
+    fontSize: 240, fill: '#00552f', textAlign: 'center', lineHeight: .86,
+    originX: 'center', originY: 'top'
   }, width * .84, height * .24, 8, 240);
   valor.set({ miroRole: 'price', miroBaseFontSize: 240, miroFitMinFontSize: 8, miroFitMaxHeight: height * .24 });
   ajustarLarguraTextoPlaca(valor, width * .84, 8, height * .24);
@@ -2378,6 +2394,9 @@ adicionarTextoVisualPlaca(canvasFabric, String(unidade || '').toUpperCase(), {
     left: width * .08, top: height * .93, width: width * .84, height: height * .05,
     fontSize: 30, fill: '#00552f', textAlign: 'center'
   }, width * .84, height * .05, 16, 30);
+
+  // Aplica a mesma régua de alinhamento na criação, edição, prévia e impressão.
+  ajustarObjetosAutomaticosDaPlaca(canvasFabric, width, height, 'vertical');
 }
 window.onload = function() {
   atualizarCampoDescricao('prod');
@@ -4109,9 +4128,16 @@ function imprimirPlacas() {
           position: relative;
         }
 
-        /* --- HORIZONTAL --- */
-        .page.horizontal {
-          padding: 10mm;
+        /* --- ESTILOS HORIZONTAIS --- */
+        .page.horizontal { padding: 10mm; }
+        .page.vertical { padding: 0; margin: 0; }
+        .placa-print.vertical {
+          width: 210mm;
+          height: 297mm;
+          display: block;
+          object-fit: fill;
+          margin: 0;
+          padding: 0;
         }
 
         .divisor-meio {
@@ -4126,28 +4152,15 @@ function imprimirPlacas() {
         .placa-wrapper.topo { position: absolute; top: 15mm; left: 10mm; width: 190mm; }
         .placa-wrapper.base { position: absolute; bottom: 15mm; left: 10mm; width: 190mm; }
 
-        /* A placa no modo horizontal deve manter a proporção da imagem */
         .placa-print {
           width: 100%;
           height: auto;
           display: block;
           box-sizing: border-box;
         }
+        .placa-print.sem-borda { border: none !important; }
 
-        /* --- VERTICAL --- */
-        .page.vertical {
-          padding: 0; /* Zero margem para preencher o A4 todo */
-        }
 
-        .placa-print.vertical {
-          width: 210mm;
-          height: 297mm;
-          object-fit: fill; /* Como a imagem já está no formato A4 exato, isso não distorce */
-          display: block;
-          position: absolute;
-          top: 0;
-          left: 0;
-        }
       </style>
     </head>
     <body>
@@ -4159,16 +4172,17 @@ function imprimirPlacas() {
   placas.forEach((placa) => {
     const img = placa.querySelector('.fabric-resultado-placa');
     const src = img ? img.src : null;
-
     if (!src) return;
 
     const ehVertical = placa.classList.contains('placa-a4-vertical');
-    itensPorPagina.push({ src: src, vertical: ehVertical });
+    const temBordaFabric = placa.classList.contains('placa-com-fabric');
+
+    itensPorPagina.push({ src: src, vertical: ehVertical, semBorda: temBordaFabric });
   });
 
   if (formato === 'vertical') {
-    // Apenas a imagem limpa, sem nenhuma casca HTML que possa cortar ou desproporcionar
     itensPorPagina.forEach(item => {
+      // Para o vertical, usamos a imagem gerada pelo Fabric preenchendo tudo
       htmlContent += `
         <div class="page vertical">
           <img src="${item.src}" class="placa-print vertical" />
@@ -4181,17 +4195,19 @@ function imprimirPlacas() {
       htmlContent += `<div class="divisor-meio"></div>`;
 
       if (itensPorPagina[i]) {
+        const classeBorda = itensPorPagina[i].semBorda ? 'sem-borda' : '';
         htmlContent += `
           <div class="placa-wrapper topo">
-            <img src="${itensPorPagina[i].src}" class="placa-print" />
+            <img src="${itensPorPagina[i].src}" class="placa-print ${classeBorda}" />
           </div>
         `;
       }
 
       if (itensPorPagina[i + 1]) {
+        const classeBorda = itensPorPagina[i + 1].semBorda ? 'sem-borda' : '';
         htmlContent += `
           <div class="placa-wrapper base">
-            <img src="${itensPorPagina[i + 1].src}" class="placa-print" />
+            <img src="${itensPorPagina[i + 1].src}" class="placa-print ${classeBorda}" />
           </div>
         `;
       }
